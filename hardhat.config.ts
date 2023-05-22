@@ -40,8 +40,8 @@ task("available-networks", "Prints the available networks")
         );
     });
 
-task("deploy", "Deploys contracts")
-    .addParam("privateKey", "The network to deploy to")
+task("deploy", "Deploys contracts to a network")
+    .addParam("privateKey", "Private key of the account to deploy from")
     .addParam("networkName", "The network to deploy to", "localhost")
     .setAction(async ({ privateKey, networkName }, { run }) => {
         const { main } = await lazyImport("./scripts/deploy-pk");
