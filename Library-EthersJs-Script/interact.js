@@ -330,8 +330,6 @@ const run = async () => {
     // const provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545/");
     const provider = new ethers.providers.JsonRpcProvider(process.env.RPC_URL);
 
-    // const walletDeployer = new ethers.Wallet("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", provider);
-    // const wallerAddress1 = new ethers.Wallet("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d", provider)
 
     const walletDeployer = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
     const wallerAddress1 = new ethers.Wallet(process.env.PRIVATE_KEY, provider)
@@ -339,8 +337,8 @@ const run = async () => {
     const libraryDeployer = new ethers.Contract(address, abi, walletDeployer);
     const libraryAddress1 = libraryDeployer.connect(wallerAddress1);
 
-    // const addBookTx = await libraryDeployer.addNewBook("The Da Vinci Code", 3);
-    // await addBookTx.wait();
+    const addBookTx = await libraryDeployer.addNewBook("The Da Vinci Code", 3);
+    await addBookTx.wait();
 
     const books = await libraryDeployer.getBooks();
 
