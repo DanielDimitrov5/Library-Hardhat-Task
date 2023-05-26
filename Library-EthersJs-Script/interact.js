@@ -337,17 +337,21 @@ const run = async () => {
     const libraryDeployer = new ethers.Contract(address, abi, walletDeployer);
     const libraryAddress1 = libraryDeployer.connect(wallerAddress1);
 
-    const addBookTx = await libraryDeployer.addNewBook("The Da Vinci Code", 3);
-    await addBookTx.wait();
+    // const addBookTx = await libraryDeployer.addNewBook("Timeshelter", 12);
+    // await addBookTx.wait();
 
-    const books = await libraryDeployer.getBooks();
+    // const books = await libraryDeployer.getBooks();
 
-    books.forEach(book => {
-        console.log(`${ethers.BigNumber.from(book.id).toString()} ${book.name}`);
-    });
-    console.log("--------------------------------------------------");
+    // books.forEach(book => {
+    //     console.log(`${ethers.BigNumber.from(book.id).toString()} ${book.name}`);
+    // });
+    // console.log("--------------------------------------------------");
 
-    const book = await libraryDeployer.books(5);
+    const book = await libraryDeployer.books(10);
+
+    console.log(book);
+
+    return;
 
     const borrowxTx = await libraryAddress1.borrowBook(book.id, { gasLimit: 1000000 });
     await borrowxTx.wait();
@@ -364,19 +368,19 @@ const run = async () => {
     }
     console.log("--------------------------------------------------");
 
-    const returnTx = await libraryAddress1.returnBook(book.id, { gasLimit: 1000000 });
-    const retrunResult = await returnTx.wait();
+    // const returnTx = await libraryAddress1.returnBook(book.id, { gasLimit: 1000000 });
+    // const retrunResult = await returnTx.wait();
 
-    if(retrunResult.status === 1) {
-        console.log(`Book ${book.name} returned successfully by ${wallerAddress1.address}`)
-    } else {
-        console.log(`Book ${book.name} not returned by ${wallerAddress1.address}`)
-    }
+    // if(retrunResult.status === 1) {
+    //     console.log(`Book ${book.name} returned successfully by ${wallerAddress1.address}`)
+    // } else {
+    //     console.log(`Book ${book.name} not returned by ${wallerAddress1.address}`)
+    // }
 
-    const bookAvailabelCopies = (await libraryDeployer.books(book.id)).copies;
+    // const bookAvailabelCopies = (await libraryDeployer.books(book.id)).copies;
 
-    console.log(`Book ${book.name} currently available in ${ethers.BigNumber.from(bookAvailabelCopies).toString()} copies.`);
-    console.log("--------------------------------------------------");
+    // console.log(`Book ${book.name} currently available in ${ethers.BigNumber.from(bookAvailabelCopies).toString()} copies.`);
+    // console.log("--------------------------------------------------");
 };
 
 run();
