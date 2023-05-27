@@ -4,9 +4,12 @@ import { useSigner } from "wagmi";
 import libraryABI from "../abi/Library.json";
 import Spinner from 'react-bootstrap/Spinner';
 
-import { Button, Card, Container, Row, Col, Modal, Form } from 'react-bootstrap';
+import { Button, Container, Row, Col } from 'react-bootstrap';
+import BookCard from "../components/BookCard";
+import AddBookModal from "../components/AddBookModal";
 
 const Library = () => {
+
     const { data: signer } = useSigner();
     const contractAddress = "0x5F81B135A28cA68aB6Ea67f50468dC40cceF0696";
 
@@ -15,13 +18,14 @@ const Library = () => {
 
     const [isLoadingContractData, setIsLoadingContractData] = useState(true);
     const [bookCopies, setBookCopies] = useState({});
-    const [isLoadingRentBook, setIsLoadingRentBook] = useState({});
+    const [isLoadingRentBook, setIsLoadingBookAction] = useState({});
     const [isBookRented, setIsBookRented] = useState({});
     const [isLoadingAddBook, setIsLoadingAddBook] = useState(false);
 
     const [showModal, setShowModal] = useState(false);
     const [title, setTitle] = useState('');
     const [copies, setCopies] = useState('');
+    const [newBooks, setNewBooks] = useState([]);
 
     const handleShowModal = () => setShowModal(true);
     const handleCloseModal = () => setShowModal(false);
@@ -49,13 +53,13 @@ const Library = () => {
         }
 
         setBookCopies(copies);
-        setIsLoadingRentBook(loadingStates);
+        setIsLoadingBookAction(loadingStates);
         setContractData({ bookCount, books });
         setIsLoadingContractData(false);
     }, [libraryContract]);
 
     const handleRentBook = async (bookId) => {
-        setIsLoadingRentBook(prevState => ({
+        setIsLoadingBookAction(prevState => ({
             ...prevState,
             [bookId]: true
         }));
@@ -63,28 +67,36 @@ const Library = () => {
         try {
             await libraryContract.borrowBook(bookId);
 
-            setIsBookRented(prevState => ({
-                ...prevState,
-                [bookId]: true
-            }));
+            libraryContract.on("LogBookBorrowed", async (borrower, id, event) => {
+                setIsBookRented(prevState => ({
+                    ...prevState,
+                    [id]: true
+                }));
+
+                const copies = (await libraryContract.books(id)).copies;
+
+                setBookCopies(prevState => ({
+                    ...prevState,
+                    [id]: copies
+                }));
+
+                setIsLoadingBookAction(prevState => ({
+                    ...prevState,
+                    [id]: false
+                }));
+            });
 
         } catch (error) {
-            console.log(error);
+            setIsLoadingBookAction(prevState => ({
+                ...prevState,
+                [bookId]: false
+            }));
         }
 
-        setBookCopies(prevState => ({
-            ...prevState,
-            [bookId]: prevState[bookId] - 1
-        }));
-
-        setIsLoadingRentBook(prevState => ({
-            ...prevState,
-            [bookId]: false
-        }));
     };
 
     const handleReturnBook = async (bookId) => {
-        setIsLoadingRentBook(prevState => ({
+        setIsLoadingBookAction(prevState => ({
             ...prevState,
             [bookId]: true
         }));
@@ -92,24 +104,32 @@ const Library = () => {
         try {
             await libraryContract.returnBook(bookId);
 
-            setIsBookRented(prevState => ({
+            libraryContract.on("LogBookReturned", async (borrower, id, event) => {
+
+                setIsBookRented(prevState => ({
+                    ...prevState,
+                    [id]: false
+                }));
+
+                const copies = (await libraryContract.books(id)).copies;
+
+                setBookCopies(prevState => ({
+                    ...prevState,
+                    [id]: copies
+                }));
+
+                setIsLoadingBookAction(prevState => ({
+                    ...prevState,
+                    [id]: false
+                }));
+            });
+
+        } catch (error) {
+            setIsLoadingBookAction(prevState => ({
                 ...prevState,
                 [bookId]: false
             }));
-
-        } catch (error) {
-            console.log(error);
         }
-
-        setBookCopies(prevState => ({
-            ...prevState,
-            [bookId]: prevState[bookId] + 1
-        }));
-
-        setIsLoadingRentBook(prevState => ({
-            ...prevState,
-            [bookId]: false
-        }));
     };
 
     const handleAddBook = async () => {
@@ -117,12 +137,19 @@ const Library = () => {
 
         try {
             await libraryContract.addNewBook(title, copies);
+
+            libraryContract.on("LogNewBookAdded", (id, name, copies, event) => {
+
+                setNewBooks(prevState => [...prevState, { id, name: title, copies }]);
+
+                handleCloseModal();
+                setIsLoadingAddBook(false);
+            });
         } catch (error) {
-            console.log(error);
+            handleCloseModal();
+            setIsLoadingAddBook(false);
         }
 
-        handleCloseModal();
-        setIsLoadingAddBook(false);
     };
 
     const handleSubmit = (event) => {
@@ -152,7 +179,7 @@ const Library = () => {
                     <h1>Library</h1>
                 </div>
                 <Button variant="primary" onClick={handleShowModal}>
-                    +book
+                    + Book
                 </Button>
                 <Container>
                     <Row className="justify-content-center">
@@ -167,36 +194,37 @@ const Library = () => {
                                             </Row>
                                         ) : (
                                             <ul>
-                                                {contractData.books.map((book) => (
-                                                    <React.Fragment key={book.id}>
-                                                        <Card>
-                                                            <Card.Header as="h5">Book #{book.id.toString()}</Card.Header>
-                                                            <Card.Body>
-                                                                <Card.Title>{book.name}</Card.Title>
-                                                                <Card.Text>
-                                                                    Available copies: {bookCopies[book.id]}
-                                                                </Card.Text>
-                                                                {isLoadingRentBook[book.id] ? (
-                                                                    <Spinner animation="border" variant="warning" />
-                                                                ) : (
-                                                                    <>
-                                                                        {isBookRented[book.id] ? (
-                                                                            <Button variant="success" onClick={() => handleReturnBook(book.id)}>
-                                                                                Return
-                                                                            </Button>
-                                                                        ) : (
-                                                                            <Button variant="primary" onClick={() => handleRentBook(book.id)}>
-                                                                                Rent
-                                                                            </Button>
-                                                                        )}
+                                                <>
+                                                    {contractData.books.map((book) => (
+                                                        <BookCard
+                                                            key={book.id}
+                                                            book={book}
+                                                            bookCopies={bookCopies}
+                                                            isLoadingRentBook={isLoadingRentBook}
+                                                            isBookRented={isBookRented}
+                                                            handleReturnBook={handleReturnBook}
+                                                            handleRentBook={handleRentBook}
+                                                        />
+                                                    ))}
+                                                    {newBooks.length > 0 ? (
+                                                        <>
+                                                            {newBooks.map((book) => (
+                                                                <BookCard
+                                                                    key={book.id}
+                                                                    book={book}
+                                                                    bookCopies={{ [book.id]: book.copies }}
+                                                                    isLoadingRentBook={isLoadingRentBook}
+                                                                    isBookRented={isBookRented}
+                                                                    handleReturnBook={handleReturnBook}
+                                                                    handleRentBook={handleRentBook}
+                                                                />
+                                                            ))}
+                                                        </>
+                                                    ) : (
+                                                        <></>
+                                                    )}
+                                                </>
 
-                                                                    </>
-                                                                )}
-                                                            </Card.Body>
-                                                        </Card>
-                                                        <br />
-                                                    </React.Fragment>
-                                                ))}
                                             </ul>
                                         )}
                                     </div>
@@ -206,42 +234,14 @@ const Library = () => {
                     </Row>
                 </Container>
             </div>
-            <Modal show={showModal} onHide={handleCloseModal}>
-                <Modal.Header closeButton>
-                    <Modal.Title>Add new book</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    <Form onSubmit={handleSubmit}>
-                        <Form.Group controlId="formName">
-                            <Form.Label>Title:</Form.Label>
-                            <Form.Control
-                                type="text"
-                                placeholder="Enter title"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                            />
-                        </Form.Group>
-
-                        <Form.Group controlId="formCopies">
-                            <Form.Label>Copies:</Form.Label>
-                            <Form.Control
-                                type="number"
-                                placeholder="Enter number of copies"
-                                value={copies}
-                                onChange={(e) => setCopies(e.target.value)}
-                            />
-                        </Form.Group>
-                        <br />
-                        {isLoadingAddBook ? (
-                            <Spinner animation="border" variant="warning" />
-                        ) : (
-                            <Button onClick={handleAddBook} variant="primary" type="submit">
-                                Add
-                            </Button>
-                        )}
-                    </Form>
-                </Modal.Body>
-            </Modal>
+            <AddBookModal showModal={showModal}
+                handleCloseModal={handleCloseModal}
+                handleSubmit={handleSubmit}
+                data={{ title, copies }}
+                setTitle={setTitle}
+                setCopies={setCopies}
+                isLoadingAddBook={isLoadingAddBook}
+                handleAddBook={handleAddBook} />
         </>
     )
 };
