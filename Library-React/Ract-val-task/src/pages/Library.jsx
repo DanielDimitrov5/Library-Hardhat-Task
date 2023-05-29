@@ -64,26 +64,27 @@ const Library = () => {
         }));
 
         try {
-            await libraryContract.borrowBook(bookId);
+            const tx = await libraryContract.borrowBook(bookId);
+            const txReceipt = await tx.wait();
 
-            libraryContract.on("LogBookBorrowed", async (borrower, id) => {
+            if (txReceipt.status === 1) {
                 setIsBookRented(prevState => ({
                     ...prevState,
-                    [id]: true
+                    [bookId]: true
                 }));
 
-                const copies = (await libraryContract.books(id)).copies;
+                const copies = (await libraryContract.books(bookId)).copies;
 
                 setBookCopies(prevState => ({
                     ...prevState,
-                    [id]: copies
+                    [bookId]: copies
                 }));
 
                 setIsLoadingBookAction(prevState => ({
                     ...prevState,
-                    [id]: false
+                    [bookId]: false
                 }));
-            });
+            }
 
         } catch (error) {
             setIsLoadingBookAction(prevState => ({
@@ -101,27 +102,27 @@ const Library = () => {
         }));
 
         try {
-            await libraryContract.returnBook(bookId);
+            const tx = await libraryContract.returnBook(bookId);
+            const txReceipt = await tx.wait();
 
-            libraryContract.on("LogBookReturned", async (borrower, id) => {
-
+            if (txReceipt.status === 1) {
                 setIsBookRented(prevState => ({
                     ...prevState,
-                    [id]: false
+                    [bookId]: false
                 }));
 
-                const copies = (await libraryContract.books(id)).copies;
+                const copies = (await libraryContract.books(bookId)).copies;
 
                 setBookCopies(prevState => ({
                     ...prevState,
-                    [id]: copies
+                    [bookId]: copies
                 }));
 
                 setIsLoadingBookAction(prevState => ({
                     ...prevState,
-                    [id]: false
+                    [bookId]: false
                 }));
-            });
+            }
 
         } catch (error) {
             setIsLoadingBookAction(prevState => ({
@@ -135,7 +136,7 @@ const Library = () => {
         setIsLoadingAddBook(true);
 
         try {
-            await libraryContract.addNewBook(title, copies);
+            const tx = await libraryContract.addNewBook(title, copies);
 
             libraryContract.on("LogNewBookAdded", (id, name, copies) => {
 
