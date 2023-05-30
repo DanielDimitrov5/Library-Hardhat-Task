@@ -38,7 +38,7 @@ const Library = () => {
         let copies = {};
         let loadingStates = {};
 
-        for (let i = 1; i <= books.length; i++) {
+        for (let i = 1; i <= bookCount; i++) {
             const book = await libraryContract.books(i);
             copies[i] = book.copies;
             loadingStates[i] = false;
@@ -55,7 +55,7 @@ const Library = () => {
         setIsLoadingBookAction(loadingStates);
         setContractData({ bookCount, books });
         setIsLoadingContractData(false);
-    }, [libraryContract]);
+    }, [libraryContract, signer]);
 
     const handleRentBook = async (bookId) => {
         setIsLoadingBookAction(prevState => ({
@@ -137,22 +137,25 @@ const Library = () => {
 
         try {
             const tx = await libraryContract.addNewBook(title, copies);
+            const txReceipt = await tx.wait();
 
-            libraryContract.on("LogNewBookAdded", (id, name, copies) => {
+            const currentId = contractData.bookCount.toNumber() + 1;
 
+            if (txReceipt.status === 1) {
                 setContractData(prevState => ({
                     ...prevState,
-                    books: [...prevState.books, { id, name: title, copies }]
+                    books: [...prevState.books, { id: currentId, name: title, copies }]
                 }));
 
                 setBookCopies(prevState => ({
                     ...prevState,
-                    [id]: copies
+                    [currentId]: copies
                 }));
 
                 handleCloseModal();
                 setIsLoadingAddBook(false);
-            });
+            }
+
         } catch (error) {
             handleCloseModal();
             setIsLoadingAddBook(false);
